@@ -88,7 +88,7 @@ function makeActionButtons(mode, item) {
   buttons += j_button(
     'play_url_btn',
     '<i class="fa fa-external-link px-1" aria-hidden="true"></i>',
-    {'name': item.name, 'url': mode === 'hls' ? item.hls_url : item.stream_url},
+    {'name': item.name, 'url': mode === 'hls' ? item.hls_url : item.mpegts_url},
     'secondary',
     false,
     true
@@ -118,7 +118,7 @@ function make_channel_list(data) {
       )
     );
     channel_clone.querySelector('#channel-hls-action').innerHTML = makeActionButtons('hls', item);
-    channel_clone.querySelector('#channel-stream-action').innerHTML = makeActionButtons('stream', item);
+    channel_clone.querySelector('#channel-stream-action').innerHTML = makeActionButtons('mpegts', item);
     channelScroller.appendChild(channel_clone);
     count++;
   }

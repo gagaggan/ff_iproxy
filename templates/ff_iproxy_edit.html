@@ -338,10 +338,11 @@ function isForwardChannelUrl(url) {
     if (host !== 'localhost' && host !== '127.0.0.1') {
       return false;
     }
-    if (path.indexOf('/api/hls/') >= 0) {
+    const apiType = (target.searchParams.get('type') || '').toLowerCase();
+    if (path.indexOf('/api/channel/') >= 0 && apiType === 'hls') {
       return true;
     }
-    if (path.endsWith('/api/playlist.m3u') || path.indexOf('/api/playlist.m3u/') >= 0) {
+    if (path.endsWith('/api/m3u') && apiType === 'hls') {
       return true;
     }
   } catch (e) {
