@@ -4,7 +4,6 @@
 {{ macros.m_button_group([['globalSettingSaveBtn', '설정 저장']])}}
 {{ macros.m_row_start('5') }}
 {{ macros.m_row_end() }}
-{{ macros.m_hr() }}
 
 <nav>
   {{ macros.m_tab_head_start() }}
@@ -23,6 +22,13 @@
         [['ffmpeg_version_btn', '버전 확인'], ['test_transcode_encoder_btn', '인코더 테스트']],
         value=arg['ffmpeg_path'],
         desc=['UDP 채널을 HLS로 변환할 때 사용할 ffmpeg 실행 파일 경로입니다.', '리눅스는 보통 ffmpeg 또는 /usr/bin/ffmpeg, 윈도우는 ffmpeg.exe 경로를 사용합니다.']
+      ) }}
+      {{ macros.setting_radio_with_value(
+        'operation_mode',
+        '운영 모드',
+        [['personal', '개인용'], ['shared', '공유용']],
+        value=arg['operation_mode'],
+        desc=['자세한 차이는 메뉴얼을 참조해주세요.']
       ) }}
       {{ macros.setting_radio_with_value(
         'alive_yaml_mode',
@@ -205,6 +211,7 @@ $(document).ajaxSuccess(function(_event, xhr, settings) {
 function saveSettingPage() {
   const payload = {
     ffmpeg_path: ($('#ffmpeg_path').val() || '').trim(),
+    operation_mode: $('input[name="operation_mode"]:checked').val() || 'personal',
     idle_timeout: ($('#idle_timeout').val() || '').trim(),
     hls_time: ($('#hls_time').val() || '').trim(),
     hls_list_size: ($('#hls_list_size').val() || '').trim(),
