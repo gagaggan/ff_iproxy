@@ -24,6 +24,7 @@ from .channel_service import (
     is_forward_channel_url,
     normalize_url_to_localhost_if_ddns,
 )
+from .multicast_input import build_buffered_multicast_input
 
 logger = P.logger
 ModelSetting = P.ModelSetting
@@ -671,10 +672,8 @@ def probe_channel_type(url, timeout=3):
 def stream_via_ffmpeg_copy(channel, chunk_size=188 * 32):
     ffmpeg_bin = get_ffmpeg_bin()
     source = channel['url']
-    input_url = source
+    input_url, input_options = build_buffered_multicast_input(source)
     channel_id = channel.get('id') or channel.get('name') or 'unknown'
-    if source.startswith('udp://'):
-        input_url = f'{source}?fifo_size=5000000&overrun_nonfatal=1'
 
     cmd = [
         ffmpeg_bin,
@@ -685,6 +684,7 @@ def stream_via_ffmpeg_copy(channel, chunk_size=188 * 32):
         user_agent = (ModelSetting.get('user_agent') or '').strip()
         if user_agent:
             cmd.extend(['-user_agent', user_agent])
+    cmd.extend(input_options)
     cmd.extend([
         '-analyzeduration', '3000000',
         '-probesize', '3000000',
