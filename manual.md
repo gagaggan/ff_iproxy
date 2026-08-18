@@ -56,3 +56,7 @@ I-Proxy는 IPTV/HTTP/HLS 소스를 FlaskFarm에서 재생 가능한 HLS 또는 M
 - 지원되는 원격 플러그인 URL은 `type=direct`, `type=raw`, `type=repack`, `type=mpegts` 값을 사용합니다.
 - type= 파라미터를 보고 플러그인 여부를 판단하기 때문에, type 파라미터가 포함된 url을 소스로 사용해주세요.
 - 숨김 채널은 전체 목록 포함 옵션에 따라 플레이리스트에서 제외할 수 있습니다.
+
+## MPEG-TS RTP 버퍼
+
+MPEG-TS 중계는 UDP/RTP 멀티캐스트 입력에 큰 소켓 버퍼와 FFmpeg 입력 큐를 사용합니다. RTP 입력에는 패킷 재정렬 큐와 최대 5초 지연을 추가하여 순간적인 버스트와 순서 뒤바뀜으로 인한 영상 손상을 줄입니다.
