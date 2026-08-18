@@ -1,5 +1,10 @@
 {% extends "base.html" %}
-{% block head %}{{ super() }}{% endblock %}
+{% block head %}
+{{ super() }}
+{% if arg['play_mode'] == 'mpegts' %}
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.2/dist/mpegts.min.js"></script>
+{% endif %}
+{% endblock %}
 {% block content %}
 
 <div class="container col-sm-10 mt-3 mb-3">
@@ -9,15 +14,88 @@
     <span class="text-muted ml-2">{{ arg['channel']['current_program'] }}</span>
     {% endif %}
   </div>
-  <video id="iproxy_popup_player" controls autoplay playsinline style="width:100%; background-color:black;" src="{{ arg['play_url'] }}"></video>
+  <video id="iproxy_popup_player" controls autoplay playsinline style="width:100%; background-color:black;"></video>
+  <div id="iproxy_player_status" class="small text-muted mt-2" aria-live="polite"></div>
 </div>
 
 <script type="text/javascript">
 $(document).ready(function(){
-  const player = document.getElementById('iproxy_popup_player');
-  if (player) {
-    player.play().catch(() => {});
+  const video = document.getElementById('iproxy_popup_player');
+  const status = document.getElementById('iproxy_player_status');
+  const playMode = {{ arg['play_mode']|tojson }};
+  const playUrl = {{ arg['play_url']|tojson }};
+  let mpegtsPlayer = null;
+
+  function setStatus(message, isError=false) {
+    if (!status) return;
+    status.textContent = message || '';
+    status.classList.toggle('text-danger', isError);
+    status.classList.toggle('text-muted', !isError);
   }
+
+  function cleanupMpegtsPlayer() {
+    if (!mpegtsPlayer) return;
+    try { mpegtsPlayer.pause(); } catch (e) {}
+    try { mpegtsPlayer.unload(); } catch (e) {}
+    try { mpegtsPlayer.detachMediaElement(); } catch (e) {}
+    try { mpegtsPlayer.destroy(); } catch (e) {}
+    mpegtsPlayer = null;
+  }
+
+  if (!video) return;
+
+  if (playMode !== 'mpegts') {
+    video.src = playUrl;
+    video.play().catch(() => setStatus('자동 재생이 차단됐습니다. 재생 버튼을 눌러주세요.'));
+    return;
+  }
+
+  if (!window.mpegts || !mpegts.isSupported()) {
+    setStatus('이 브라우저는 MPEG-TS 스트림 재생에 필요한 Media Source Extensions를 지원하지 않습니다.', true);
+    return;
+  }
+
+  const features = mpegts.getFeatureList();
+  if (!features.mseLivePlayback) {
+    setStatus('이 브라우저에서는 실시간 MPEG-TS 재생을 지원하지 않습니다.', true);
+    return;
+  }
+
+  const hevcStatus = features.mseH265Playback ? 'HEVC 지원' : 'HEVC 미지원';
+  setStatus('스트림 연결 중 · ' + hevcStatus);
+
+  mpegtsPlayer = mpegts.createPlayer({
+    type: 'mse',
+    isLive: true,
+    url: playUrl
+  }, {
+    enableWorker: true,
+    enableWorkerForMSE: true,
+    enableStashBuffer: true,
+    stashInitialSize: 8 * 1024 * 1024,
+    lazyLoad: false,
+    liveBufferLatencyChasing: true,
+    liveBufferLatencyMaxLatency: 12,
+    liveBufferLatencyMinRemain: 4,
+    autoCleanupSourceBuffer: true,
+    autoCleanupMaxBackwardDuration: 30,
+    autoCleanupMinBackwardDuration: 10,
+    fixAudioTimestampGap: true
+  });
+
+  mpegtsPlayer.attachMediaElement(video);
+  mpegtsPlayer.on(mpegts.Events.ERROR, function(errorType, errorDetail, errorInfo) {
+    const detail = errorDetail || errorType || 'unknown';
+    const message = errorInfo && errorInfo.msg ? ' · ' + errorInfo.msg : '';
+    setStatus('재생 오류: ' + detail + message, true);
+  });
+  video.addEventListener('playing', () => setStatus('재생 중 · ' + hevcStatus));
+  video.addEventListener('waiting', () => setStatus('데이터 버퍼링 중 · ' + hevcStatus));
+  video.addEventListener('stalled', () => setStatus('스트림 수신 지연 · ' + hevcStatus));
+
+  mpegtsPlayer.load();
+  mpegtsPlayer.play().catch(() => setStatus('재생 버튼을 눌러주세요 · ' + hevcStatus));
+  window.addEventListener('beforeunload', cleanupMpegtsPlayer);
 });
 </script>
 
