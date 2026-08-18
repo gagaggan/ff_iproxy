@@ -15,6 +15,7 @@ class PlayerTemplateTest(unittest.TestCase):
         self.assertIn('stashInitialSize: 8 * 1024 * 1024', template)
         self.assertIn('lazyLoad: false', template)
         self.assertIn('enableWorkerForMSE: true', template)
+        self.assertIn('new URL(', template)
 
     def test_stream_action_opens_mpegts_player_page(self):
         template = (ROOT / 'templates' / 'ff_iproxy_list.html').read_text(encoding='utf-8')

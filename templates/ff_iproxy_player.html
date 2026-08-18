@@ -23,7 +23,7 @@ $(document).ready(function(){
   const video = document.getElementById('iproxy_popup_player');
   const status = document.getElementById('iproxy_player_status');
   const playMode = {{ arg['play_mode']|tojson }};
-  const playUrl = {{ arg['play_url']|tojson }};
+  const playUrl = new URL({{ arg['play_url']|tojson }}, window.location.origin).href;
   let mpegtsPlayer = null;
 
   function setStatus(message, isError=false) {
