@@ -60,3 +60,10 @@ I-Proxy는 IPTV/HTTP/HLS 소스를 FlaskFarm에서 재생 가능한 HLS 또는 M
 ## MPEG-TS RTP 버퍼
 
 MPEG-TS 중계는 UDP/RTP 멀티캐스트 입력에 큰 소켓 버퍼와 FFmpeg 입력 큐를 사용합니다. RTP 입력에는 패킷 재정렬 큐와 최대 5초 지연을 추가하여 순간적인 버스트와 순서 뒤바뀜으로 인한 영상 손상을 줄입니다.
+
+## 브라우저 MPEG-TS 재생
+
+- 채널 목록의 `Stream` 열에 있는 재생 버튼은 mpegts.js 플레이어를 새 창으로 엽니다.
+- 플레이어는 MPEG-TS를 브라우저의 Media Source Extensions 형식으로 변환해 재생하며, 충분한 입력 버퍼를 유지합니다.
+- UHD HEVC 채널은 플레이어 아래 상태 문구가 `HEVC 지원`으로 표시되는 브라우저에서만 재생할 수 있습니다.
+- `Stream` 열의 주소 버튼은 VLC 같은 외부 플레이어에서 사용할 원본 MPEG-TS 주소를 표시합니다.

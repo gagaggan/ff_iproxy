@@ -388,9 +388,11 @@ def update_alive_fix_url(req):
 def make_channel_payload(channel, req):
     base = get_base_url(req)
     web_player_url = with_request_apikey(f'/{package_name}/api/channel/{channel["id"]}?type=repack', req)
+    mpegts_web_player_url = with_request_apikey(f'/{package_name}/api/channel/{channel["id"]}?type=mpegts', req)
     hls_url = with_request_apikey(f'{base}/api/channel/{channel["id"]}?type=repack', req)
     mpegts_url = with_request_apikey(f'{base}/api/channel/{channel["id"]}?type=mpegts', req)
     player_url = with_request_apikey(f'{base}/player/{channel["id"]}', req)
+    mpegts_player_url = with_request_apikey(f'/{package_name}/player/{channel["id"]}?mode=mpegts', req)
     if get_operation_mode() != 'shared' and has_supported_url_type_param(channel.get('url')):
         hls_url = replace_url_type(channel['url'], 'repack')
         mpegts_url = replace_url_type(channel['url'], 'mpegts')
@@ -409,7 +411,9 @@ def make_channel_payload(channel, req):
         'mpegts_url': mpegts_url,
         'hls_url': hls_url,
         'web_player_url': web_player_url,
+        'mpegts_web_player_url': mpegts_web_player_url,
         'player_url': player_url,
+        'mpegts_player_url': mpegts_player_url,
     }
 
 
@@ -997,11 +1001,16 @@ def page_player(channel_id):
         abort(404)
     payload = make_channel_payload(channel, request)
     payload['current_program'] = get_current_program_map().get(channel_id, '')
-    logger.info('[PLAYER] popup_open channel=%s type=%s remote=%s ua=%s', channel.get('name'), channel.get('type'), request.remote_addr, request.headers.get('User-Agent', ''))
+    play_mode = (request.args.get('mode') or 'hls').strip().lower()
+    if play_mode not in ('hls', 'mpegts'):
+        abort(400)
+    play_url = payload['mpegts_web_player_url'] if play_mode == 'mpegts' else payload['web_player_url']
+    logger.info('[PLAYER] popup_open channel=%s type=%s mode=%s remote=%s ua=%s', channel.get('name'), channel.get('type'), play_mode, request.remote_addr, request.headers.get('User-Agent', ''))
     return render_template(f'{package_name}_player.html', arg={
         'package_name': package_name,
         'channel': payload,
-        'play_url': payload['web_player_url'],
+        'play_mode': play_mode,
+        'play_url': play_url,
     })
 
 

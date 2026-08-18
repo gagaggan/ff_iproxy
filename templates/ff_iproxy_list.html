@@ -85,6 +85,16 @@ $("body").on('click', '#list_channel_reload_btn', function(e) {
 
 function makeActionButtons(mode, item) {
   let buttons = '';
+  if (mode === 'mpegts') {
+    buttons += j_button(
+      'play_mpegts_btn',
+      '<i class="fa fa-play px-1" aria-hidden="true"></i>',
+      {'mode': 'mpegts', 'name': item.name, 'url': item.mpegts_player_url},
+      'secondary',
+      false,
+      true
+    );
+  }
   buttons += j_button(
     'play_url_btn',
     '<i class="fa fa-external-link px-1" aria-hidden="true"></i>',
@@ -177,6 +187,21 @@ $("body").on('click', '#play_url_btn', function(e){
   tmp += j_button('globalOpenBtn', '새창에서 열기', {'url':url}, 'success');
   str += j_button_group(tmp);
   showModal(str, `${name} 주소`, false);
+});
+
+$("body").on('click', '#play_mpegts_btn', function(e){
+  e.preventDefault();
+  let name = $(this).data('name');
+  let url = $(this).data('url');
+  sendPlayerEvent('play_click', 'mpegts', name, url);
+  const popupWidth = Math.min(1280, Math.max(980, screen.availWidth - 80));
+  const popupHeight = Math.min(820, Math.max(620, screen.availHeight - 160));
+  const leftPos = Math.max(0, screen.availWidth - popupWidth);
+  window.open(
+    url,
+    '_blank',
+    `location=no,directories=no,resizable=yes,status=no,toolbar=no,menubar=no,width=${popupWidth},height=${popupHeight},top=80,left=${leftPos}`
+  );
 });
 </script>
 
