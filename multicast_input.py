@@ -8,6 +8,18 @@ RTP_REORDER_PACKETS = 8192
 RTP_MAX_DELAY_MICROSECONDS = 5000000
 
 
+def replace_multicast_scheme(source, detected_type):
+    """Align a UDP/RTP multicast URL with the detected transport type."""
+    source = str(source or '').strip()
+    detected_type = str(detected_type or '').strip().lower()
+    parsed = urllib.parse.urlparse(source)
+    if parsed.scheme.lower() not in ('udp', 'rtp'):
+        return source
+    if detected_type not in ('udp', 'rtp'):
+        return source
+    return urllib.parse.urlunparse(parsed._replace(scheme=detected_type))
+
+
 def build_buffered_multicast_input(source):
     """Return an FFmpeg input URL and input options for UDP/RTP streams."""
     source = str(source or '').strip()
