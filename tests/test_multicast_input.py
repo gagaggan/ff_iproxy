@@ -1,9 +1,21 @@
 import unittest
 
-from multicast_input import build_buffered_multicast_input
+from multicast_input import build_buffered_multicast_input, replace_multicast_scheme
 
 
 class MulticastInputTest(unittest.TestCase):
+    def test_replaces_multicast_scheme_and_preserves_query(self):
+        source = 'udp://239.192.81.38:49220?localaddr=192.168.29.230&buffer_size=1048576'
+
+        self.assertEqual(
+            replace_multicast_scheme(source, 'rtp'),
+            'rtp://239.192.81.38:49220?localaddr=192.168.29.230&buffer_size=1048576',
+        )
+
+    def test_does_not_replace_non_multicast_scheme(self):
+        source = 'https://example.com/live.ts?type=udp'
+        self.assertEqual(replace_multicast_scheme(source, 'rtp'), source)
+
     def test_adds_rtp_socket_and_reorder_buffers(self):
         url, options = build_buffered_multicast_input('rtp://239.192.81.39:49220')
 

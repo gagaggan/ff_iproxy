@@ -12,6 +12,7 @@ except Exception:
     yaml = None
 
 from .setup import P
+from .multicast_input import replace_multicast_scheme
 
 logger = P.logger
 ModelSetting = P.ModelSetting
@@ -305,6 +306,7 @@ def update_manual_channel_type(channel_id, detected_type, url=None):
         if url and current_url and current_url != url:
             continue
         value['id'] = current_id
+        value['url'] = replace_multicast_scheme(current_url, detected_type)
         value['type'] = detected_type or ''
         value['type_diagnosed'] = True if detected_type else False
         value['rtp'] = True if detected_type == 'rtp' else False
