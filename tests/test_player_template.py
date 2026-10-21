@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -15,6 +16,8 @@ class PlayerTemplateTest(unittest.TestCase):
         self.assertIn('stashInitialSize: 8 * 1024 * 1024', template)
         self.assertIn('lazyLoad: false', template)
         self.assertIn('enableWorkerForMSE: true', template)
+        self.assertIn('liveBufferLatencyChasing: false', template)
+        self.assertNotIn('liveBufferLatencyMaxLatency', template)
         self.assertIn('new URL(', template)
 
     def test_stream_action_opens_mpegts_player_page(self):
@@ -22,6 +25,13 @@ class PlayerTemplateTest(unittest.TestCase):
 
         self.assertIn("'play_mpegts_btn'", template)
         self.assertIn('item.mpegts_player_url', template)
+
+    def test_uxn_channel_uses_rtp(self):
+        channels = json.loads((ROOT / 'resources' / 'channels.json').read_text(encoding='utf-8'))
+        uxn = channels['ch120']
+
+        self.assertEqual(uxn['type'], 'rtp')
+        self.assertEqual(uxn['url'], 'rtp://239.192.81.38:49220')
 
 
 if __name__ == '__main__':
