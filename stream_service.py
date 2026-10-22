@@ -93,6 +93,7 @@ def get_hls_default_options():
         'resolution': normalize_hls_resolution_value(ModelSetting.get('hls_target_resolution')),
         'preset': normalize_hls_preset_value(ModelSetting.get('hls_preset')),
         'container': 'mpegts',
+        'codec_hint': '',
     }
 
 
@@ -116,6 +117,11 @@ def normalize_hls_container_value(value):
     return text if text in ('mpegts', 'fmp4') else 'mpegts'
 
 
+def normalize_hls_codec_hint(value):
+    text = (value or '').strip().lower()
+    return normalize_video_codec_name(text) if text in ('hevc', 'h265', 'h264', 'avc1') else ''
+
+
 def get_hls_request_options(req=None):
     options = get_hls_default_options()
     if req is None:
@@ -126,8 +132,8 @@ def get_hls_request_options(req=None):
     options['container'] = normalize_hls_container_value(
         req.args.get('container') or req.args.get('segment_format') or options['container']
     )
+    options['codec_hint'] = normalize_hls_codec_hint(req.args.get('codec_hint'))
     return options
-
 
 def get_hls_session_key(channel_id, options=None):
     if options is None:
@@ -138,6 +144,7 @@ def get_hls_session_key(channel_id, options=None):
             'resolution': normalize_hls_resolution_value(options.get('resolution')),
             'preset': normalize_hls_preset_value(options.get('preset')),
             'container': normalize_hls_container_value(options.get('container')),
+            'codec_hint': normalize_hls_codec_hint(options.get('codec_hint')),
         }
     digest = hashlib.md5(json.dumps(effective, sort_keys=True).encode('utf-8')).hexdigest()[:12]
     return f'{channel_id}__{digest}'
@@ -255,6 +262,8 @@ def _start_hls_locked(channel_id, options=None):
     probe = ffmpeg_probe_input(input_url, timeout=8)
     video_codec = normalize_video_codec_name(probe.get('video_codec'))
     source_height = int(probe.get('height') or 0)
+    if not video_codec:
+        video_codec = normalize_hls_codec_hint(hls_options.get('codec_hint'))
     if codec_mode == 'h264':
         should_transcode_h264 = video_codec in ('hevc', 'h265')
     should_scale = bool(target_height and source_height and target_height < source_height)
