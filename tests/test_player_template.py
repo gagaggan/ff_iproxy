@@ -44,6 +44,8 @@ class PlayerTemplateTest(unittest.TestCase):
         self.assertIn("'-hls_segment_type', 'fmp4'", stream_source)
         self.assertIn("'-hls_fmp4_init_filename', 'init.mp4'", stream_source)
         self.assertIn("'-tag:v', 'hvc1'", stream_source)
+        self.assertIn("'codec_hint': ''", stream_source)
+        self.assertIn("normalize_hls_codec_hint(hls_options.get('codec_hint'))", stream_source)
         self.assertIn("f'segment_%05d.{extension}'", stream_source)
         self.assertIn("glob('*.m4s')", stream_source)
         self.assertIn("line.endswith(('.ts', '.m4s'))", route_source)
