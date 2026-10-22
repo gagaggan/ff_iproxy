@@ -25,6 +25,8 @@ $(document).ready(function(){
   const playMode = {{ arg['play_mode']|tojson }};
   const playUrl = new URL({{ arg['play_url']|tojson }}, window.location.origin).href;
   let mpegtsPlayer = null;
+  let recoveryTimer = null;
+  let recoveryAttempts = 0;
 
   function setStatus(message, isError=false) {
     if (!status) return;
@@ -40,6 +42,34 @@ $(document).ready(function(){
     try { mpegtsPlayer.detachMediaElement(); } catch (e) {}
     try { mpegtsPlayer.destroy(); } catch (e) {}
     mpegtsPlayer = null;
+  }
+
+  function cancelRecovery() {
+    if (!recoveryTimer) return;
+    window.clearTimeout(recoveryTimer);
+    recoveryTimer = null;
+  }
+
+  function scheduleRecovery(reason, delay=6000) {
+    if (recoveryTimer || !mpegtsPlayer) return;
+    if (recoveryAttempts >= 3) {
+      setStatus('자동 재연결에 실패했습니다. 페이지를 새로고침해 주세요. · ' + hevcStatus, true);
+      return;
+    }
+    setStatus(reason + ' · 자동 재연결 대기 · ' + hevcStatus);
+    recoveryTimer = window.setTimeout(function() {
+      recoveryTimer = null;
+      recoveryAttempts += 1;
+      setStatus('스트림 자동 재연결 중 (' + recoveryAttempts + '/3) · ' + hevcStatus);
+      try {
+        mpegtsPlayer.pause();
+        mpegtsPlayer.unload();
+        mpegtsPlayer.load();
+        mpegtsPlayer.play().catch(() => {});
+      } catch (error) {
+        setStatus('자동 재연결 실패 · 페이지를 새로고침해 주세요. · ' + hevcStatus, true);
+      }
+    }, delay);
   }
 
   if (!video) return;
@@ -72,7 +102,7 @@ $(document).ready(function(){
     enableWorker: true,
     enableWorkerForMSE: true,
     enableStashBuffer: true,
-    stashInitialSize: 8 * 1024 * 1024,
+    stashInitialSize: 4 * 1024 * 1024,
     lazyLoad: false,
     liveBufferLatencyChasing: false,
     autoCleanupSourceBuffer: true,
@@ -86,14 +116,26 @@ $(document).ready(function(){
     const detail = errorDetail || errorType || 'unknown';
     const message = errorInfo && errorInfo.msg ? ' · ' + errorInfo.msg : '';
     setStatus('재생 오류: ' + detail + message, true);
+    scheduleRecovery('재생 오류 복구', 1500);
   });
-  video.addEventListener('playing', () => setStatus('재생 중 · ' + hevcStatus));
-  video.addEventListener('waiting', () => setStatus('데이터 버퍼링 중 · ' + hevcStatus));
-  video.addEventListener('stalled', () => setStatus('스트림 수신 지연 · ' + hevcStatus));
+  video.addEventListener('playing', function() {
+    cancelRecovery();
+    recoveryAttempts = 0;
+    setStatus('재생 중 · ' + hevcStatus);
+  });
+  video.addEventListener('waiting', function() {
+    scheduleRecovery('데이터 버퍼링 중', 8000);
+  });
+  video.addEventListener('stalled', function() {
+    scheduleRecovery('스트림 수신 지연', 4000);
+  });
 
   mpegtsPlayer.load();
   mpegtsPlayer.play().catch(() => setStatus('재생 버튼을 눌러주세요 · ' + hevcStatus));
-  window.addEventListener('beforeunload', cleanupMpegtsPlayer);
+  window.addEventListener('beforeunload', function() {
+    cancelRecovery();
+    cleanupMpegtsPlayer();
+  });
 });
 </script>
 
