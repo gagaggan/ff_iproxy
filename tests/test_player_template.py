@@ -13,11 +13,14 @@ class PlayerTemplateTest(unittest.TestCase):
         self.assertIn('mpegts.js@1.8.2', template)
         self.assertIn("type: 'mse'", template)
         self.assertIn('enableStashBuffer: true', template)
-        self.assertIn('stashInitialSize: 8 * 1024 * 1024', template)
+        self.assertIn('stashInitialSize: 4 * 1024 * 1024', template)
         self.assertIn('lazyLoad: false', template)
         self.assertIn('enableWorkerForMSE: true', template)
         self.assertIn('liveBufferLatencyChasing: false', template)
         self.assertNotIn('liveBufferLatencyMaxLatency', template)
+        self.assertIn('scheduleRecovery', template)
+        self.assertIn('recoveryAttempts >= 3', template)
+        self.assertIn("mpegtsPlayer.unload();", template)
         self.assertIn('new URL(', template)
 
     def test_stream_action_opens_mpegts_player_page(self):
