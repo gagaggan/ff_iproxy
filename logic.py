@@ -1088,8 +1088,14 @@ def build_hls_channel_response(channel_id, channel):
     base = get_base_url(request)
     lines = []
     for line in content.splitlines():
-        if line.endswith('.ts'):
+        if line.endswith(('.ts', '.m4s')):
             lines.append(with_apikey(f'{base}/api/ts/{hls_key}/{os.path.basename(line)}'))
+        elif line.startswith('#EXT-X-MAP:'):
+            match = re.search(r'URI="([^"]+)"', line)
+            if match:
+                init_url = with_apikey(f'{base}/api/ts/{hls_key}/{os.path.basename(match.group(1))}')
+                line = line[:match.start(1)] + init_url + line[match.end(1):]
+            lines.append(line)
         else:
             lines.append(line)
 
@@ -1131,4 +1137,9 @@ def api_ts(filename):
     path = get_hls_session_dir(hls_key) / safe_name
     if not path.exists():
         abort(404)
-    return Response(path.read_bytes(), mimetype='video/mp2t')
+    suffix = path.suffix.lower()
+    mimetype = {
+        '.mp4': 'video/mp4',
+        '.m4s': 'video/iso.segment',
+    }.get(suffix, 'video/mp2t')
+    return Response(path.read_bytes(), mimetype=mimetype)

@@ -36,6 +36,21 @@ class PlayerTemplateTest(unittest.TestCase):
         self.assertEqual(uxn['type'], 'rtp')
         self.assertEqual(uxn['url'], 'rtp://239.192.81.38:49220')
 
+    def test_fmp4_hls_support_is_wired(self):
+        stream_source = (ROOT / 'stream_service.py').read_text(encoding='utf-8')
+        route_source = (ROOT / 'logic.py').read_text(encoding='utf-8')
+
+        self.assertIn("('mpegts', 'fmp4')", stream_source)
+        self.assertIn("'-hls_segment_type', 'fmp4'", stream_source)
+        self.assertIn("'-hls_fmp4_init_filename', 'init.mp4'", stream_source)
+        self.assertIn("'-tag:v', 'hvc1'", stream_source)
+        self.assertIn("f'segment_%05d.{extension}'", stream_source)
+        self.assertIn("glob('*.m4s')", stream_source)
+        self.assertIn("line.endswith(('.ts', '.m4s'))", route_source)
+        self.assertIn("line.startswith('#EXT-X-MAP:')", route_source)
+        self.assertIn("'.m4s': 'video/iso.segment'", route_source)
+        self.assertIn("'.mp4': 'video/mp4'", route_source)
+
 
 if __name__ == '__main__':
     unittest.main()

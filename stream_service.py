@@ -92,6 +92,7 @@ def get_hls_default_options():
         'codec_mode': normalize_hls_codec_mode(ModelSetting.get('hls_codec_mode')),
         'resolution': normalize_hls_resolution_value(ModelSetting.get('hls_target_resolution')),
         'preset': normalize_hls_preset_value(ModelSetting.get('hls_preset')),
+        'container': 'mpegts',
     }
 
 
@@ -110,6 +111,11 @@ def normalize_hls_preset_value(value):
     return text if text in ('fast', 'normal', 'quality') else 'normal'
 
 
+def normalize_hls_container_value(value):
+    text = (value or 'mpegts').strip().lower()
+    return text if text in ('mpegts', 'fmp4') else 'mpegts'
+
+
 def get_hls_request_options(req=None):
     options = get_hls_default_options()
     if req is None:
@@ -117,6 +123,9 @@ def get_hls_request_options(req=None):
     options['codec_mode'] = normalize_hls_codec_mode(req.args.get('codec_mode') or options['codec_mode'])
     options['resolution'] = normalize_hls_resolution_value(req.args.get('resolution') or options['resolution'])
     options['preset'] = normalize_hls_preset_value(req.args.get('preset') or options['preset'])
+    options['container'] = normalize_hls_container_value(
+        req.args.get('container') or req.args.get('segment_format') or options['container']
+    )
     return options
 
 
@@ -128,6 +137,7 @@ def get_hls_session_key(channel_id, options=None):
             'codec_mode': normalize_hls_codec_mode(options.get('codec_mode')),
             'resolution': normalize_hls_resolution_value(options.get('resolution')),
             'preset': normalize_hls_preset_value(options.get('preset')),
+            'container': normalize_hls_container_value(options.get('container')),
         }
     digest = hashlib.md5(json.dumps(effective, sort_keys=True).encode('utf-8')).hexdigest()[:12]
     return f'{channel_id}__{digest}'
@@ -143,8 +153,9 @@ def get_hls_playlist_path(hls_key):
     return get_hls_session_dir(hls_key) / 'live.m3u8'
 
 
-def get_hls_segment_pattern(hls_key):
-    return 'segment_%05d.ts'
+def get_hls_segment_pattern(hls_key, container='mpegts'):
+    extension = 'm4s' if normalize_hls_container_value(container) == 'fmp4' else 'ts'
+    return f'segment_%05d.{extension}'
 
 
 def get_hls_key_from_segment_filename(filename):
@@ -249,6 +260,7 @@ def _start_hls_locked(channel_id, options=None):
     should_scale = bool(target_height and source_height and target_height < source_height)
     should_transcode = should_transcode_h264 or should_scale
     selected_encoder = (ModelSetting.get('hls_h264_encoder') or 'libx264').strip()
+    hls_container = normalize_hls_container_value(hls_options.get('container'))
 
     def build_hls_command(encoder_name):
         cmd = [
@@ -316,12 +328,20 @@ def _start_hls_locked(channel_id, options=None):
                 '-dn',
                 '-c', 'copy',
             ])
+        if hls_container == 'fmp4':
+            if video_codec == 'hevc' and not should_transcode:
+                cmd.extend(['-tag:v', 'hvc1'])
+            cmd.extend([
+                '-hls_segment_type', 'fmp4',
+                '-hls_fmp4_init_filename', 'init.mp4',
+                '-bsf:a', 'aac_adtstoasc',
+            ])
         cmd.extend([
             '-f', 'hls',
             '-hls_time', str(ModelSetting.get('hls_time')),
             '-hls_list_size', str(ModelSetting.get('hls_list_size')),
             '-hls_flags', 'delete_segments+append_list+independent_segments+temp_file+omit_endlist',
-            '-hls_segment_filename', get_hls_segment_pattern(hls_key),
+            '-hls_segment_filename', get_hls_segment_pattern(hls_key, hls_container),
             str(get_hls_playlist_path(hls_key)),
         ])
         return cmd
@@ -744,11 +764,13 @@ def wait_for_hls_ready(hls_key, min_segments=2, playlist_wait_count=60, segment_
         return False
 
     for _ in range(segment_wait_count):
-        ts_files = list(get_hls_session_dir(hls_key).glob('*.ts'))
-        if len(ts_files) >= min_segments:
+        segment_files = list(get_hls_session_dir(hls_key).glob('*.ts'))
+        segment_files.extend(get_hls_session_dir(hls_key).glob('*.m4s'))
+        if len(segment_files) >= min_segments:
             break
         time.sleep(0.5)
     segment_count = len(list(get_hls_session_dir(hls_key).glob('*.ts')))
+    segment_count += len(list(get_hls_session_dir(hls_key).glob('*.m4s')))
     ready = segment_count >= min_segments
     if ready:
         with STATE_LOCK:
