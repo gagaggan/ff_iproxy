@@ -13,6 +13,8 @@ I-Proxy는 IPTV/HTTP/HLS 소스를 FlaskFarm에서 재생 가능한 HLS 또는 M
 ### 공통
 
 - HLS 모드는 `type=repack`으로, 스트림 모드는 `type=mpegts`로 전달합니다.
+- HEVC/UHD 채널에서 MPEG-TS HLS를 지원하지 않는 플레이어는
+  `type=repack&container=fmp4`로 fMP4(CMAF) 조각을 받을 수 있습니다.
 - 외부 소스일시, HLS 모드는 로컬에 플레이 리스트, ts를 생성한 뒤 전달하며, 스트림모드일때는 pipe로 묶어서 보냅니다.
 - HLS 모드 이용시에는 개인용/공유용 차이가 없습니다. 스트림모드일때는 차이가 있습니다.
 - 빠르게 쓰시려면 개인용을, 네트워크 자원을 아끼시려면 공유용으로 쓰세요.
