@@ -763,15 +763,23 @@ def wait_for_hls_ready(hls_key, min_segments=2, playlist_wait_count=60, segment_
     if not playlist.exists():
         return False
 
+    ready = False
+    segment_count = 0
     for _ in range(segment_wait_count):
         segment_files = list(get_hls_session_dir(hls_key).glob('*.ts'))
         segment_files.extend(get_hls_session_dir(hls_key).glob('*.m4s'))
-        if len(segment_files) >= min_segments:
+        segment_count = len(segment_files)
+        try:
+            playlist_text = playlist.read_text(encoding='utf-8')
+        except (OSError, UnicodeError):
+            playlist_text = ''
+        target_match = re.search(r'^#EXT-X-TARGETDURATION:(\d+)$', playlist_text, re.MULTILINE)
+        listed_segments = len(re.findall(r'^segment_\d+\.(?:ts|m4s)$', playlist_text, re.MULTILINE))
+        ready = bool(target_match and int(target_match.group(1)) > 0)
+        ready = ready and segment_count >= min_segments and listed_segments >= min_segments
+        if ready:
             break
         time.sleep(0.5)
-    segment_count = len(list(get_hls_session_dir(hls_key).glob('*.ts')))
-    segment_count += len(list(get_hls_session_dir(hls_key).glob('*.m4s')))
-    ready = segment_count >= min_segments
     if ready:
         with STATE_LOCK:
             should_log = hls_key not in hls_ready_logged
